@@ -21,3 +21,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+#API
+/api/mongodb_config.py
+/api/config.py
+/api/__pycache__
