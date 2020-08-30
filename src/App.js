@@ -1,9 +1,9 @@
 import React from "react";
-import logo from "./logo.svg";
 import "./App.css";
+import Dashboard from "./components/Dashboard";
 
 function App() {
-  return <div className="App">My Stonks</div>;
+  return <Dashboard />;
 }
 
 export default App;

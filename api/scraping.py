@@ -1,125 +1,192 @@
 import requests
 from bs4 import BeautifulSoup
-import json
-import os
-import config
-
-print(os.environ)
-
-API_KEY = ''
+from config import NYT_API_KEY
+from mongodb_config import articles_db, companies_db
+from sentiment_analysis import analyze_all_articles
+from datetime import datetime
+from urllib.parse import quote
 
 
-# USING ONLY THE PARAGRAPHS THAT CONTAIN THE COMPANY NAME MIGHT BE A GOOD CHOICE
-
-# ['https://www.nytimes.com/2020/08/20/business/dealbook/apple-two-trillion-market-value.html',
-# 'https://www.nytimes.com/2020/08/14/technology/apple-app-store-epic-games-fortnite.html',
-# 'https://www.nytimes.com/2020/08/19/technology/apple-2-trillion.html',
-# 'https://www.nytimes.com/2020/08/25/technology/fortnite-creator-tim-sweeney-apple-google.html',
-# 'https://www.nytimes.com/2020/08/13/technology/apple-fortnite-ban.html',
-# 'https://www.nytimes.com/2020/08/04/technology/apple-schiller-marketing-executive-departure.html',
-# 'https://www.nytimes.com/2020/08/07/technology/facebook-apple-gaming-app-store.html',
-# 'https://www.nytimes.com/2020/08/26/technology/personaltech/tiktok-data-apps.html',
-# 'https://www.nytimes.com/2020/07/28/technology/apple-app-store-airbnb-classpass.html',
-#  'https://www.nytimes.com/2020/08/18/business/dealbook/tiktok-huawei-china.html']
-# [1885, 1434, 1187, 1468, 1352, 586, 850, 1272, 1256, 1384]
-
-
-def get_all_urls(query):
+def get_info_nyt(company_name):
     urls = []
-    word_counts = []
+    headlines = []
+    images = []
+    snippets = []
+    dates = []
+    authors = []
 
     requestUrl = "https://api.nytimes.com/svc/search/v2/articlesearch.json?q=" + \
-        query + "&api-key=" + API_KEY
+        quote(company_name) + "&api-key=" + NYT_API_KEY
 
-    page = requests.get(requestUrl)
+    try:
+        page = requests.get(requestUrl).json()
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
 
-    docs = page.json()['response']['docs']
+    if (page['status'] == 'OK'):
+        docs = page['response']['docs']
 
-    for item in docs:
-        urls.append(item['web_url'])
-        word_counts.append(item['word_count'])
-        print(item)
+        for item in docs:
+            if len(item['multimedia']) > 0:
+                images.append('https://static01.nyt.com/' +
+                              item['multimedia'][0]['url'])
+            else:
+                images.append('')
 
-    print(urls)
-    print(word_counts)
-    return urls
+            if len(item['web_url']) > 0:
+                urls.append(item['web_url'])
+            else:
+                urls.append('')
+
+            if len(item['headline']) > 0:
+                headlines.append(item['headline']['main'])
+            else:
+                headlines.append('')
+
+            if len(item['snippet']) > 0:
+                snippets.append(item['snippet'])
+            else:
+                snippets.append('')
+
+            if len(item['pub_date']) > 0:
+                date = datetime.strptime(
+                    item['pub_date'][:10], "%Y-%m-%d").strftime("%B %d, %Y")
+                dates.append(date)
+            else:
+                dates.append('')
+
+            person = item['byline']['person']
+            name = ''
+            if len(person) > 0:
+                if person[0]['firstname']:
+                    name += person[0]['firstname']
+                if person[0]['lastname']:
+                    name += ' '
+                    name += person[0]['lastname']
+            authors.append(name)
+
+    return urls, headlines, images, snippets, dates, authors
 
 
-def get_all_articles():
+def get_all_articles(company_name):
+    pairs = []
+
+    print('\n\nsent a query to nyt for ' + company_name + '\n\n')
+
+    urls, headlines, images, snippets, dates, authors = get_info_nyt(
+        company_name)
+
+    if urls and headlines and images and snippets and dates and authors:
+        for i in range(len(urls)):
+            article = get_article_data(urls[i])
+            pairs.append({'url': urls[i], 'article': article, 'headline': headlines[i],
+                          'image': images[i], 'snippet': snippets[i], 'date': dates[i], 'author': authors[i]})
+
+        get_ratings(company_name, pairs)
+    # if True:
+    # else:
+    #     print('\n\nfetched from database\n\n')
+
+    #     article_doc = articles_db.find_one({'name': company_name})
+
+    #     pairs = article_doc['pairs']
+
+    # print('pairs = \n', pairs)
+
+
+def get_ratings(company_name, pairs):
+    print('\n\nsent a query to save to db for ' + company_name + '\n\n')
+
+    ratings = analyze_all_articles(pairs)
+
+    positives = []
+    negatives = []
     articles = []
-    urls = get_all_urls('apple')
 
-    for url in urls:
-        article = get_article_data(url)
-        articles.append(article)
+    if len(ratings) > 2:
+        positives = ratings[:-3:-1]
+        negatives = ratings[:2]
+
+        for i in range(len(positives)):
+            positives[i].pop('article', None)
+            negatives[i].pop('article', None)
+
+            articles.append(positives[i])
+            articles.append(negatives[i])
+
+        companies_db.insert_one(
+            {'name': company_name, 'articles': articles})
 
 
 def get_article_data(url):
-  # extract this one article first
-  # https://www.nytimes.com/2020/08/20/business/dealbook/apple-two-trillion-market-value.html
-    paragraphs = []
-    length = 0
-    wordcount = 0
-    page = requests.get(url)
-    soup = BeautifulSoup(page.content, "html.parser")
-    for item in soup.select('.StoryBodyCompanionColumn'):
-        # print('first loop ran')
-        try:
-            print('-----------------------------------------------------------------------------------------------')
-            for p_tag in item.find_all('p'):
-                # print('second loop ran')
-                text = p_tag.get_text()
-                length = length + len(text.split())
-                # print('len of text =', len(text))
-                if 'Apple' in text:
-                    wordcount += 1
-                    print('\n\n=============================================================\n Apple here \n=============================================================\n\n')
-                paragraphs.append(text)
-                print(text)
-            print('mid len =', length)
-        except:
-            print('error occured')
 
-    print('final len =', length)
-    print('word count =', wordcount)
+    paragraphs = []
+    article = ''
+    # length = 0
+    # wordcount = 0
+    try:
+        page = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
+
+    soup = BeautifulSoup(page.content, "html.parser")
+
+    for item in soup.select('.StoryBodyCompanionColumn'):
+
+        # print('-----------------------------------------------------------------------------------------------')
+        for p_tag in item.find_all('p'):
+            # print('second loop ran')
+            text = p_tag.get_text()
+            # length = length + len(text.split())
+            # print('len of text =', len(text))
+            paragraphs.append(text)
+            # if 'Apple' in text:
+            #     wordcount += 1
+            # print('\n\n=============================================================\n Apple here \n=============================================================\n\n')
+
+            # print(text)
+        # print('mid len =', length)
+
+    for p in paragraphs:
+        article += p
+
+    # print('===================================================\n\nfull article:\n\n', article)
+
+    # print('final len =', length)
+    # print()
+    # print('word count =', wordcount)
+    # print()
+
+    # print('**************************************************************************************************')
+    return article
+
+
+def get_all_companies_articles():
+    company_names = []
+    with open('../CompanyNames.txt') as f:
+        company_names = f.readlines()
+
+    company_names = [x.rstrip('\n') for x in company_names]
+
+    # print(company_names)
+    for company in company_names:
+        get_all_articles(company)
+
+
+def test():
+    print('\n\nfetched from database\n\n')
+
+    article_doc = articles_db.find_one({'name': "Apple"})
+
+    pairs = article_doc['pairs']
+
+    print('pairs = \n', pairs)
+
+    # ster = quote('J.P. Morgan Chase & Co.')
+    # print(type(ster))
 
 
 if __name__ == "__main__":
-    if(API_KEY == ''):
-        get_article_data(
-            'https://www.nytimes.com/2020/08/20/business/dealbook/apple-two-trillion-market-value.html')
-    else:
-        get_all_urls('apple')
-
-# print()
-
-# URL = 'https://www.monster.ca/jobs/search/?q=Software-Developer&where=Waterloo__2C-Ontario'
-
-# page = requests.get(URL)
-
-# soup = BeautifulSoup(page.content, 'html.parser')
-
-# results = soup.find(id='ResultsContainer')
-
-# web_jobs = results.find_all(
-#     'h2', string=lambda text: 'web developer' in text.lower())
-
-# for job in web_jobs:
-#     link = job.find('a')['href']
-#     print(job.text.strip())
-#     print(f'Apply here: {link}\n')
-
-# job_elems = results.find_all('section', class_='card-content')
-
-# for job_elem in job_elems:
-#     # Each job_elem is a new BeautifulSoup object.
-#     # You can use the same methods on it as you did before.
-#     title_elem = job_elem.find('h2', class_='title')
-#     company_elem = job_elem.find('div', class_='company')
-#     location_elem = job_elem.find('div', class_='location')
-#     if None in (title_elem, company_elem, location_elem):
-#         continue
-    # print(title_elem.text.strip())
-    # print(company_elem.text.strip())
-    # print(location_elem.text.strip())
-    # print()
+    get_all_companies_articles()
+    # get_all_articles('Apple')
+    # test()
