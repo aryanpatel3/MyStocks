@@ -23,7 +23,6 @@ def analyze(text):
 def analyze_all_articles(pairs):
     ratings = []
     valid = True
-    print('\n\nsent a query to ibm\n\n')
 
     for item in pairs:
         article = item['article']

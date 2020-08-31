@@ -101,7 +101,6 @@ def get_ratings(company_name, pairs):
 
     positives = []
     negatives = []
-    articles = []
 
     if len(ratings) > 2:
         positives = ratings[:-3:-1]
@@ -111,11 +110,8 @@ def get_ratings(company_name, pairs):
             positives[i].pop('article', None)
             negatives[i].pop('article', None)
 
-            articles.append(positives[i])
-            articles.append(negatives[i])
-
         companies_db.insert_one(
-            {'name': company_name, 'articles': articles})
+            {'name': company_name, 'positives': positives, 'negatives': negatives})
 
 
 def get_article_data(url):
@@ -176,11 +172,12 @@ def get_all_companies_articles():
 def test():
     print('\n\nfetched from database\n\n')
 
-    article_doc = articles_db.find_one({'name': "Apple"})
+    article_doc = companies_db.remove("name")
 
-    pairs = article_doc['pairs']
+    print(article_doc)
+    # pairs = article_doc['pairs']
 
-    print('pairs = \n', pairs)
+    # print('pairs = \n', pairs)
 
     # ster = quote('J.P. Morgan Chase & Co.')
     # print(type(ster))

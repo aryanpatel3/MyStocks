@@ -2,16 +2,17 @@ import React, { useState, useEffect } from "react";
 
 import {
   Box,
+  Backdrop,
+  CircularProgress,
   Paper,
   Container,
-  IconButton,
   Typography,
   InputBase,
   AppBar,
   Toolbar,
 } from "@material-ui/core";
 
-import { Menu as MenuIcon, Search as SearchIcon } from "@material-ui/icons";
+import { Search as SearchIcon } from "@material-ui/icons";
 
 import { fade, makeStyles } from "@material-ui/core/styles";
 
@@ -23,13 +24,16 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: "white",
     boxShadow: "0 5px 15px rgba(0, 0, 0, 0.5)",
     padding: "20px",
-    // margin: "5% auto",
-    [theme.breakpoints.only("xs")]: {
-      width: "300px",
-    },
-    [theme.breakpoints.only("sm")]: {
-      width: "550px",
-    },
+    margin: "0 auto",
+    marginTop: 50,
+  },
+  container: {
+    // transform: "scale(0.5)",
+    // transformOrigin: "0 0",
+  },
+  backdrop: {
+    zIndex: theme.zIndex.drawer + 1,
+    color: "#fff",
   },
   root: {
     flexGrow: 1,
@@ -88,33 +92,34 @@ const useStyles = makeStyles((theme) => ({
 export default function Dashboard(props) {
   const classes = useStyles();
 
-  // const [hasError, setErrors] = useState(false);
+  const [hasError, setErrors] = useState(false);
+  const [isLoading, setLoading] = useState(true);
   const [data, setData] = useState([]);
+  const [search, setSearch] = useState("");
 
-  console.log(data);
+  const filteredData = data.filter((company) =>
+    company.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   useEffect(() => {
     fetch("/companies").then((response) =>
-      response.json().then((data) => {
-        // console.log(data);
-        setData(data.result);
-      })
+      response
+        .json()
+        .then((data) => setData(data.result))
+        .catch((err) => setErrors(err))
     );
+    setLoading(false);
   }, []);
+
+  function handleSearchChange(e) {
+    setSearch(e.target.value.split(" ").join(""));
+  }
 
   return (
     <Box>
       <div className={classes.root}>
         <AppBar position="static">
           <Toolbar>
-            {/* <IconButton
-              edge="start"
-              className={classes.menuButton}
-              color="inherit"
-              aria-label="open drawer"
-            >
-              <MenuIcon />
-            </IconButton> */}
             <Typography className={classes.title} variant="h6" noWrap>
               My Stocks
             </Typography>
@@ -129,14 +134,27 @@ export default function Dashboard(props) {
                   input: classes.inputInput,
                 }}
                 inputProps={{ "aria-label": "search" }}
+                onChange={handleSearchChange}
               />
             </div>
           </Toolbar>
         </AppBar>
       </div>
-      {data.map((company, index) => {
-        return <CardWrapper company={company} key={index}></CardWrapper>;
-      })}
+      <Container className={classes.container}>
+        {isLoading ? (
+          <Backdrop className={classes.backdrop} open={isLoading}>
+            <CircularProgress color="inherit" />
+          </Backdrop>
+        ) : !hasError ? (
+          filteredData.map((company, index) => {
+            return <CardWrapper company={company} key={index}></CardWrapper>;
+          })
+        ) : (
+          <Paper className={classes.paper}>
+            There was a problem loading this page. Please refresh to try again.
+          </Paper>
+        )}
+      </Container>
     </Box>
   );
 }

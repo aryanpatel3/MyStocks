@@ -1,85 +1,10 @@
-Amazon Inc.
-American Express
+Alibaba
+Alphabet Inc.
 Apple
-Bank of America Corp.
-Berkshire Hathaway
-Boeing
-CHS
-CVS Caremark
-Cardinal Health
-Caterpillar
-Chevron
-Cisco Systems
-Citigroup
-Coca-Cola
-Comcast
-ConocoPhillips
-Costco Wholesale
-Deere
-Dell
-Delta Air Lines
-Dow Chemical
-DuPont
-Enterprise Products Partners
-Express Scripts Holding
-Exxon Mobil
-Fannie Mae
-FedEx
-Ford Motor
-Freddie Mac
-General Dynamics
-General Electric
-General Motors
-Goldman Sachs Group
+Facebook Inc.
 Google
-HCA Holdings
-Hess
-Hewlett-Packard
-Home Depot
-Honeywell International
-Humana
-INTL FCStone
-Ingram Micro
-Intel
-International Business Machines
-J.P. Morgan Chase & Co.
-Johnson & Johnson
-Liberty Mutual Insurance Group
-Lockheed Martin
-Lowe's
-Marathon Petroleum
-McKesson
-Merck
-MetLife
 Microsoft
-Mondelez International
-Morgan Stanley
-Nationwide
-New York Life Insurance
-News Corp.
 Oracle
-PepsiCo
-Pfizer
-Philip Morris International
-Phillips 66
-Plains All American Pipeline
-Procter & Gamble
-Prudential Financial
-Safeway
-Sears Holdings
-Sprint Nextel
-State Farm Insurance Cos.
-Supervalu
-Sysco
-TIAA-CREF
-Target
-Tesoro
-Tyson Foods
-United Continental Holdings
-United Parcel Service
-United Technologies
-UnitedHealth Group
-Valero Energy
-Verizon Communications
-Wal-Mart Stores
-Walt Disney
+Shopify Inc.
+Twitter
+Zoom Video Communications
